@@ -11,6 +11,8 @@ from langchain.chat_models import ChatOpenAI
 from langchain.callbacks import get_openai_callback
 from langchain.llms.base import BaseLLM
 from langchain.prompts import PromptTemplate
+import langchain_community.chat_models.openai as openai
+from transformers import AutoModelForCausalLM, AutoTokenizer,pipeline
 from langchain.schema import (
     AIMessage,
     HumanMessage,
@@ -28,11 +30,19 @@ from tqdm import tqdm
 from langchain_google_genai import ChatGoogleGenerativeAI
 import argparse
 from datasets import load_dataset
+from transformers import AutoModelForCausalLM, AutoTokenizer
 import os
 
 OPENAI_API_KEY = os.environ['OPENAI_API_KEY']
 GOOGLE_API_KEY = os.environ['GOOGLE_API_KEY']
 
+"""
+New Additions:
+- HUGGINGFACE_API_KEY --> Used to call custom fine-tuned models
+- MISTRAL_MODEL_ID    --> Accesses fine-tuned Mistral model hosted on HuggingFace
+"""
+HUGGINGFACE_API_KEY = os.getenv('HUGGINGFACE_API_KEY')
+MISTRAL_MODEL_ID = "xingyaoww/CodeActAgent-Mistral-7b-v0.1"
 
 pd.options.display.max_info_columns = 200
 
@@ -106,23 +116,35 @@ class ReactAgent:
                      model_name=react_llm_name,
                      openai_api_key=OPENAI_API_KEY,
                      model_kwargs={"stop": stop_list})
-            
+
         elif react_llm_name in ['mistral-7B-32K']:
+
+            # Check that a valid HuggingFace API key was provided before running the code
+            if HUGGINGFACE_API_KEY is None:
+                raise ValueError("HUGGINGFACE_API_KEY environment variable is not set")
+
+            # Define the stop list and the max token length
             stop_list = ['\n']
             self.max_token_length = 30000
-            self.llm = ChatOpenAI(temperature=0,
-                     max_tokens=256,
-                     openai_api_key="EMPTY", 
-                     openai_api_base="http://localhost:8301/v1", 
-                     model_name="gpt-3.5-turbo",
-                     model_kwargs={"stop": stop_list})
-            
+
+            model_id = "microsoft/Phi-3-mini-4k-instruct"
+            tokenizer = AutoTokenizer.from_pretrained(model_id)
+
+            model = AutoModelForCausalLM.from_pretrained(
+                model_id,
+                load_in_4bit=True,
+                #attn_implementation="flash_attention_2", # if you have an ampere GPU
+            )
+
+            pipe = pipeline("text-generation", model=model, tokenizer=tokenizer, max_new_tokens=256, temperature=0)
+            self.llm = HuggingFacePipeline(pipeline=pipe)
+        
         elif react_llm_name in ['mixtral']:
             stop_list = ['\n']
             self.max_token_length = 30000
             self.llm = ChatOpenAI(temperature=0,
                      max_tokens=256,
-                     openai_api_key="EMPTY", 
+                     openai_api_key=OPENAI_API_KEY, 
                      openai_api_base="http://localhost:8501/v1", 
                      model_name="gpt-3.5-turbo",
                      model_kwargs={"stop": stop_list})
@@ -451,7 +473,7 @@ class ReactAgent:
         while True:
             try:
                 # print(self._build_agent_prompt())
-                if self.react_name == 'gemini':
+                if self.react_name == 'gemini' or self.react_name == 'mistral-7B-32K':
                     request = format_step(self.llm.invoke(self._build_agent_prompt(),stop=['\n']).content)
                 else:
                     request = format_step(self.llm([HumanMessage(content=self._build_agent_prompt())]).content)
@@ -631,6 +653,7 @@ def to_string(data) -> str:
 
 if __name__ == '__main__':
 
+    # Parse the arguments provided by the command line
     tools_list = ["notebook","flights","attractions","accommodations","restaurants","googleDistanceMatrix","planner","cities"]
     # model_name = ['gpt-3.5-turbo-1106','gpt-4-1106-preview','gemini','mistral-7B-32K','mixtral','ChatGLM3-6B-32K'][2]
     parser = argparse.ArgumentParser()
@@ -638,29 +661,40 @@ if __name__ == '__main__':
     parser.add_argument("--model_name", type=str, default="gpt-3.5-turbo-1106")
     parser.add_argument("--output_dir", type=str, default="./")
     args = parser.parse_args()
+
+    # Select either the validation or testing dataset
     if args.set_type == 'validation':
         query_data_list  = load_dataset('osunlp/TravelPlanner','validation')['validation']
     elif args.set_type == 'test':
         query_data_list  = load_dataset('osunlp/TravelPlanner','test')['test']
+
+    # Keep track of the number of rows for the validation or testing dataset
     numbers = [i for i in range(1,len(query_data_list)+1)]
+
+    # Set up the ReactAgent using the model_name provided in the arguments
     agent = ReactAgent(None, tools=tools_list,max_steps=30,react_llm_name=args.model_name,planner_llm_name=args.model_name)
+
+    # Load the output of each travel query in a JSON file
     with get_openai_callback() as cb:
         
         for number in tqdm(numbers[:]):
             query = query_data_list[number-1]['query']
-              # check if the directory exists
+
+            # Check if the directory exists prior to adding the JSON file
             if not os.path.exists(os.path.join(f'{args.output_dir}/{args.set_type}')):
                 os.makedirs(os.path.join(f'{args.output_dir}/{args.set_type}'))
             if not os.path.exists(os.path.join(f'{args.output_dir}/{args.set_type}/generated_plan_{number}.json')):
                 result =  [{}]
             else:
                 result = json.load(open(os.path.join(f'{args.output_dir}/{args.set_type}/generated_plan_{number}.json')))
-                
+            
+            # Continue running the agent until the planner prints results
             while True:
                 planner_results, scratchpad, action_log  = agent.run(query)
                 if planner_results != None:
                     break
             
+            # Keep track of the result logs for each query
             if planner_results == 'Max Token Length Exceeded.':
                 result[-1][f'{args.model_name}_two-stage_results_logs'] = scratchpad 
                 result[-1][f'{args.model_name}_two-stage_results'] = 'Max Token Length Exceeded.'
@@ -671,7 +705,7 @@ if __name__ == '__main__':
                 result[-1][f'{args.model_name}_two-stage_results'] = planner_results
                 result[-1][f'{args.model_name}_two-stage_action_logs'] = action_log
 
-            # write to json file
+            # Write to the JSON file
             with open(os.path.join(f'{args.output_dir}/{args.set_type}/generated_plan_{number}.json'), 'w') as f:
                 json.dump(result, f, indent=4)
         
