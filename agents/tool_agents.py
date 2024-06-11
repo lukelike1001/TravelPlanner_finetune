@@ -8,6 +8,7 @@ from typing import List, Dict, Any
 import tiktoken
 from pandas import DataFrame
 from langchain.chat_models import ChatOpenAI
+from langchain_experimental.llms.ollama_functions import OllamaFunctions
 from langchain.callbacks import get_openai_callback
 from langchain.llms.base import BaseLLM
 from langchain.prompts import PromptTemplate
@@ -99,7 +100,15 @@ class ReactAgent:
         self.current_observation = ''
         self.current_data = None
 
-        if 'gpt-3.5' in react_llm_name:
+        if 'ollama-llm' in react_llm_name:
+            stop_list = ['\n']
+            self.max_token_length = 30000
+            self.llm = OllamaFunctions(temperature=0,
+                                       max_tokens=256,
+                                       model_name='xingyaow/codeact-agent-mistral',
+                                       stop=stop_list)
+        
+        elif 'gpt-3.5' in react_llm_name:
             stop_list = ['\n']
             self.max_token_length = 15000
             self.llm = ChatOpenAI(temperature=1,
@@ -118,26 +127,14 @@ class ReactAgent:
                      model_kwargs={"stop": stop_list})
 
         elif react_llm_name in ['mistral-7B-32K']:
-
-            # Check that a valid HuggingFace API key was provided before running the code
-            if HUGGINGFACE_API_KEY is None:
-                raise ValueError("HUGGINGFACE_API_KEY environment variable is not set")
-
-            # Define the stop list and the max token length
             stop_list = ['\n']
             self.max_token_length = 30000
-
-            model_id = "microsoft/Phi-3-mini-4k-instruct"
-            tokenizer = AutoTokenizer.from_pretrained(model_id)
-
-            model = AutoModelForCausalLM.from_pretrained(
-                model_id,
-                load_in_4bit=True,
-                #attn_implementation="flash_attention_2", # if you have an ampere GPU
-            )
-
-            pipe = pipeline("text-generation", model=model, tokenizer=tokenizer, max_new_tokens=256, temperature=0)
-            self.llm = HuggingFacePipeline(pipeline=pipe)
+            self.llm = ChatOpenAI(temperature=0,
+                     max_tokens=256,
+                     openai_api_key="EMPTY", 
+                     openai_api_base="http://localhost:8301/v1", 
+                     model_name="gpt-3.5-turbo",
+                     model_kwargs={"stop": stop_list})
         
         elif react_llm_name in ['mixtral']:
             stop_list = ['\n']
@@ -473,7 +470,7 @@ class ReactAgent:
         while True:
             try:
                 # print(self._build_agent_prompt())
-                if self.react_name == 'gemini' or self.react_name == 'mistral-7B-32K':
+                if self.react_name == 'gemini' or self.react_name == 'ollama-llm':
                     request = format_step(self.llm.invoke(self._build_agent_prompt(),stop=['\n']).content)
                 else:
                     request = format_step(self.llm([HumanMessage(content=self._build_agent_prompt())]).content)
