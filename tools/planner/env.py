@@ -92,7 +92,16 @@ class ReactEnv:
                     returned_info.append('The accommodation information is not valid, please check.')
         
         if len(returned_info) == 0:
-            return "The cost of your plan is " + str(total_cost) + " dollars."
+
+            """
+            Confirm that the total_cost of the plan fits within the budget.
+            """
+            budget = tested_data['budget']
+            if total_cost <= budget:
+                return f"The cost of your plan is {total_cost} dollars, which fits within the budget. For your next action, call Finish[Final Plan] to output the plan."
+            else:
+                return f"Sorry, the cost of your plan is {total_cost} dollars, which exceeds the budget of {budget} dollars. Find either cheaper accomodation or flights to reduce the total cost of the plan. If the cheapest accomodation and flight have been selected, and the cost of the plan still exceeds the budget, start finding cheaper restaurants for breakfast, lunch, and dinner."
+
         else:
             message = "Sorry, the cost of your plan is not available because of the following reasons:"
             for idx, info in enumerate(returned_info):
@@ -190,7 +199,16 @@ class ReactReflectEnv(ReactEnv):
         if len(returned_info) == 0:
             self.retry_step = 0
             self.is_terminated = False
-            return "The cost of your plan is " + str(total_cost) + " dollars."
+
+            """
+            Confirm that the total_cost of the plan fits within the budget.
+            """
+            budget = tested_data['budget']
+            if total_cost <= budget:
+                return f"The cost of your plan is {total_cost} dollars, which fits within the budget. For your next action, call Finish[Final Plan] to output the plan."
+            else:
+                return f"Sorry, the cost of your plan is {total_cost} dollars, which exceeds the budget of {budget} dollars. Find either cheaper accomodation or flights to reduce the total cost of the plan. If the cheapest accomodation and flight have been selected, and the cost of the plan still exceeds the budget, start finding cheaper restaurants for breakfast, lunch, and dinner."
+            
         else:
             message = "Sorry, the cost of your plan is not available because of the following reasons:"
             for idx, info in enumerate(returned_info):

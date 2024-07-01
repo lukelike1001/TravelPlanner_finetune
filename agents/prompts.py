@@ -191,7 +191,7 @@ REACT_REFLECT_PLANNER_INSTRUCTION = """You are a proficient planner. Based on th
 (2) Finish[Final Plan]: Use this function to indicate the completion of the task. You must submit a final, complete plan as an argument.
 ***** Example *****
 Query: Could you create a travel plan for 7 people from Ithaca to Charlotte spanning 3 days, from March 8th to March 14th, 2022, with a budget of $30,200?
-You can call CostEnquiry like CostEnquiry[{{"people_number": 7,"day": 1,"current_city": "from Ithaca to Charlotte","transportation": "Flight Number: F3633413, from Ithaca to Charlotte, Departure Time: 05:38, Arrival Time: 07:46","breakfast": "Nagaland's Kitchen, Charlotte","attraction": "The Charlotte Museum of History, Charlotte","lunch": "Cafe Maple Street, Charlotte","dinner": "Bombay Vada Pav, Charlotte","accommodation": "Affordable Spacious Refurbished Room in Bushwick!, Charlotte"}}]
+You can call CostEnquiry like CostEnquiry[{{"budget": 30200,"people_number": 7,"day": 1,"current_city": "from Ithaca to Charlotte","transportation": "Flight Number: F3633413, from Ithaca to Charlotte, Departure Time: 05:38, Arrival Time: 07:46","breakfast": "Nagaland's Kitchen, Charlotte","attraction": "The Charlotte Museum of History, Charlotte","lunch": "Cafe Maple Street, Charlotte","dinner": "Bombay Vada Pav, Charlotte","accommodation": "Affordable Spacious Refurbished Room in Bushwick!, Charlotte"}}]
 You can call Finish like Finish[Day: 1
 Current City: from Ithaca to Charlotte
 Transportation: Flight Number: F3633413, from Ithaca to Charlotte, Departure Time: 05:38, Arrival Time: 07:46
@@ -222,10 +222,8 @@ Accommodation: -]
 
 {reflections}
 
-You may also find these pieces of advice helpful:
-- For each day of the travel plan, the person should have a valid breakfast, lunch, and dinner. Avoid putting "N/A" for meals.
-- If the breakfast, lunch, or dinner information is considered not valid, verify that the invalid restaurant is located in the current city.
-  - For example, if the visitor is currently in Dallas, verify that the selected restaurant is in El Paso.
+If the cost of the plan exceeds the allocated budget, prioritize finding a cheaper accomodation or flight.
+If the cheapest accomodation and flight have been selected, and the cost of the plan still exceeds the budget, start finding cheaper restaurants for breakfast, lunch, and dinner.
 
 You must use Finish to indict you have finished the task. And each action only calls one function once.
 Given information: {text}

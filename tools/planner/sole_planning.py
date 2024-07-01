@@ -82,7 +82,7 @@ if __name__ == "__main__":
         """
         # query_data_list  = load_dataset('osunlp/TravelPlanner','validation')['validation']
         # validation_filepath = '/home/luke_skywalker/github/TravelPlanner_finetune/cache/selected_validation.csv'
-        validation_filepath = '/home/luke_skywalker/github/TravelPlanner_finetune/cache/budget_2000.csv'
+        validation_filepath = '/home/luke_skywalker/github/TravelPlanner_finetune/cache/super_easy/budget_1000.csv'
         query_data_list = load_dataset('csv', data_files={'validation': validation_filepath})['validation']
 
     elif args.set_type == 'test':
