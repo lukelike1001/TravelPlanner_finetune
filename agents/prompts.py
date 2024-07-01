@@ -25,17 +25,17 @@ Example: AccommodationSearch[Rome] would present a list of hotel rooms in Rome.
 
 (4) RestaurantSearch[City]:
 Description: Explore dining options in a city of your choice.
-Parameter: City – The name of the city where you're seeking restaurants.
+Parameter: City - The name of the city where you're seeking restaurants.
 Example: RestaurantSearch[Tokyo] would show a curated list of restaurants in Tokyo.
 
 (5) AttractionSearch[City]:
 Description: Find attractions in a city of your choice.
-Parameter: City – The name of the city where you're seeking attractions.
+Parameter: City - The name of the city where you're seeking attractions.
 Example: AttractionSearch[London] would return attractions in London.
 
 (6) CitySearch[State]
 Description: Find cities in a state of your choice.
-Parameter: State – The name of the state where you're seeking cities.
+Parameter: State - The name of the state where you're seeking cities.
 Example: CitySearch[California] would return cities in California.
 
 (7) NotebookWrite[Short Description]
@@ -221,6 +221,11 @@ Accommodation: -]
 ***** Example Ends *****
 
 {reflections}
+
+You may also find these pieces of advice helpful:
+- For each day of the travel plan, the person should have a valid breakfast, lunch, and dinner. Avoid putting "N/A" for meals.
+- If the breakfast, lunch, or dinner information is considered not valid, verify that the invalid restaurant is located in the current city.
+  - For example, if the visitor is currently in Dallas, verify that the selected restaurant is in El Paso.
 
 You must use Finish to indict you have finished the task. And each action only calls one function once.
 Given information: {text}

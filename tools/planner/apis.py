@@ -240,6 +240,10 @@ class ReactReflectPlanner:
         self.reflections: List[str] = []
         self.reflections_str: str = ''
         self.enc = tiktoken.encoding_for_model("gpt-3.5-turbo")
+        
+        # Store the plan number and reflection number to keep track of reflection logs
+        self.plan_number = 1
+        self.reflect_number = 1
 
     def run(self, text, query, reset = True) -> None:
 
@@ -254,7 +258,11 @@ class ReactReflectPlanner:
             self.step()
             if self.env.is_terminated and not self.finished:
                 self.reflect(ReflexionStrategy.REFLEXION)
-
+        
+        # Update the plan number for every completed run
+        # Then reset the reflect number to 1 for the next run
+        self.plan_number += 1
+        self.reflect_number = 1
         
         return self.answer, self.scratchpad
 
@@ -278,9 +286,14 @@ class ReactReflectPlanner:
 
         if action_type == 'CostEnquiry':
             try:
+                # Convert the string-representation of a dictionary into a dict 
                 input_arg = eval(action_arg)
+                
+                # Terminate the code if the input argument wasn't a dict
                 if type(input_arg) != dict:
                     raise ValueError('The sub plan can not be parsed into json format, please check. Only one day plan is supported.')
+                
+                # Evaluate the cost of the itinerary
                 observation = f'Cost: {self.env.run(input_arg)}'
             except SyntaxError:
                 observation = f'The sub plan can not be parsed into json format, please check.'
@@ -292,6 +305,7 @@ class ReactReflectPlanner:
             observation = f'The plan is finished.'
             self.answer = action_arg
         
+        # Any action that isn't "CostEnquiry" or "Finish" is sent here.
         else:
             observation = f'Action {action_type} is not supported.'
         
@@ -308,6 +322,14 @@ class ReactReflectPlanner:
         else:
             raise NotImplementedError(f'Unknown reflection strategy: {strategy}')
         print(self.reflections_str)
+
+        # Store the reflection inside a TXT file for all test cases
+        reflect_file_path = f"reflect/generated_reflection_plan{self.plan_number}_step{self.curr_step}_reflection{self.reflect_number}.txt"
+        os.makedirs(os.path.dirname(reflect_file_path), exist_ok=True)
+        self.reflect_number += 1
+
+        with open(reflect_file_path, 'w') as file:
+            file.write(self.reflections_str)
 
     def prompt_agent(self) -> str:
         while True:

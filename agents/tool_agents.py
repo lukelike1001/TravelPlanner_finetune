@@ -8,12 +8,9 @@ from typing import List, Dict, Any
 import tiktoken
 from pandas import DataFrame
 from langchain.chat_models import ChatOpenAI
-from langchain_experimental.llms.ollama_functions import OllamaFunctions
 from langchain.callbacks import get_openai_callback
 from langchain.llms.base import BaseLLM
 from langchain.prompts import PromptTemplate
-import langchain_community.chat_models.openai as openai
-from transformers import AutoModelForCausalLM, AutoTokenizer,pipeline
 from langchain.schema import (
     AIMessage,
     HumanMessage,
@@ -31,19 +28,11 @@ from tqdm import tqdm
 from langchain_google_genai import ChatGoogleGenerativeAI
 import argparse
 from datasets import load_dataset
-from transformers import AutoModelForCausalLM, AutoTokenizer
 import os
 
 OPENAI_API_KEY = os.environ['OPENAI_API_KEY']
 GOOGLE_API_KEY = os.environ['GOOGLE_API_KEY']
 
-"""
-New Additions:
-- HUGGINGFACE_API_KEY --> Used to call custom fine-tuned models
-- MISTRAL_MODEL_ID    --> Accesses fine-tuned Mistral model hosted on HuggingFace
-"""
-HUGGINGFACE_API_KEY = os.getenv('HUGGINGFACE_API_KEY')
-MISTRAL_MODEL_ID = "xingyaoww/CodeActAgent-Mistral-7b-v0.1"
 
 pd.options.display.max_info_columns = 200
 
@@ -100,15 +89,7 @@ class ReactAgent:
         self.current_observation = ''
         self.current_data = None
 
-        if 'ollama-llm' in react_llm_name:
-            stop_list = ['\n']
-            self.max_token_length = 30000
-            self.llm = OllamaFunctions(temperature=0,
-                                       max_tokens=256,
-                                       model_name='xingyaow/codeact-agent-mistral',
-                                       stop=stop_list)
-        
-        elif 'gpt-3.5' in react_llm_name:
+        if 'gpt-3.5' in react_llm_name:
             stop_list = ['\n']
             self.max_token_length = 15000
             self.llm = ChatOpenAI(temperature=1,
@@ -125,7 +106,7 @@ class ReactAgent:
                      model_name=react_llm_name,
                      openai_api_key=OPENAI_API_KEY,
                      model_kwargs={"stop": stop_list})
-
+            
         elif react_llm_name in ['mistral-7B-32K']:
             stop_list = ['\n']
             self.max_token_length = 30000
@@ -135,13 +116,13 @@ class ReactAgent:
                      openai_api_base="http://localhost:8301/v1", 
                      model_name="gpt-3.5-turbo",
                      model_kwargs={"stop": stop_list})
-        
+            
         elif react_llm_name in ['mixtral']:
             stop_list = ['\n']
             self.max_token_length = 30000
             self.llm = ChatOpenAI(temperature=0,
                      max_tokens=256,
-                     openai_api_key=OPENAI_API_KEY, 
+                     openai_api_key="EMPTY", 
                      openai_api_base="http://localhost:8501/v1", 
                      model_name="gpt-3.5-turbo",
                      model_kwargs={"stop": stop_list})
@@ -470,7 +451,7 @@ class ReactAgent:
         while True:
             try:
                 # print(self._build_agent_prompt())
-                if self.react_name == 'gemini' or self.react_name == 'ollama-llm':
+                if self.react_name == 'gemini':
                     request = format_step(self.llm.invoke(self._build_agent_prompt(),stop=['\n']).content)
                 else:
                     request = format_step(self.llm([HumanMessage(content=self._build_agent_prompt())]).content)
@@ -650,48 +631,51 @@ def to_string(data) -> str:
 
 if __name__ == '__main__':
 
-    # Parse the arguments provided by the command line
+    """
+    Keep track of all tools that TravelPlanner can utilize
+    """
     tools_list = ["notebook","flights","attractions","accommodations","restaurants","googleDistanceMatrix","planner","cities"]
     # model_name = ['gpt-3.5-turbo-1106','gpt-4-1106-preview','gemini','mistral-7B-32K','mixtral','ChatGLM3-6B-32K'][2]
+    
+    """
+    Extract all the arguments from the parser
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--set_type", type=str, default="validation")
     parser.add_argument("--model_name", type=str, default="gpt-3.5-turbo-1106")
     parser.add_argument("--output_dir", type=str, default="./")
+    
+    """
+    Determine whether to run on the validation or testing dataset
+    """
     args = parser.parse_args()
-
-    # Select either the validation or testing dataset
     if args.set_type == 'validation':
         query_data_list  = load_dataset('osunlp/TravelPlanner','validation')['validation']
     elif args.set_type == 'test':
         query_data_list  = load_dataset('osunlp/TravelPlanner','test')['test']
 
-    # Keep track of the number of rows for the validation or testing dataset
+    """
+    Keep track of 
+    """
     numbers = [i for i in range(1,len(query_data_list)+1)]
-
-    # Set up the ReactAgent using the model_name provided in the arguments
     agent = ReactAgent(None, tools=tools_list,max_steps=30,react_llm_name=args.model_name,planner_llm_name=args.model_name)
-
-    # Load the output of each travel query in a JSON file
     with get_openai_callback() as cb:
         
         for number in tqdm(numbers[:]):
             query = query_data_list[number-1]['query']
-
-            # Check if the directory exists prior to adding the JSON file
+              # check if the directory exists
             if not os.path.exists(os.path.join(f'{args.output_dir}/{args.set_type}')):
                 os.makedirs(os.path.join(f'{args.output_dir}/{args.set_type}'))
             if not os.path.exists(os.path.join(f'{args.output_dir}/{args.set_type}/generated_plan_{number}.json')):
                 result =  [{}]
             else:
                 result = json.load(open(os.path.join(f'{args.output_dir}/{args.set_type}/generated_plan_{number}.json')))
-            
-            # Continue running the agent until the planner prints results
+                
             while True:
                 planner_results, scratchpad, action_log  = agent.run(query)
                 if planner_results != None:
                     break
             
-            # Keep track of the result logs for each query
             if planner_results == 'Max Token Length Exceeded.':
                 result[-1][f'{args.model_name}_two-stage_results_logs'] = scratchpad 
                 result[-1][f'{args.model_name}_two-stage_results'] = 'Max Token Length Exceeded.'
@@ -702,7 +686,7 @@ if __name__ == '__main__':
                 result[-1][f'{args.model_name}_two-stage_results'] = planner_results
                 result[-1][f'{args.model_name}_two-stage_action_logs'] = action_log
 
-            # Write to the JSON file
+            # write to json file
             with open(os.path.join(f'{args.output_dir}/{args.set_type}/generated_plan_{number}.json'), 'w') as f:
                 json.dump(result, f, indent=4)
         
