@@ -136,7 +136,7 @@ class ReactReflectEnv(ReactEnv):
         self.is_terminated = False
         self.retry_step = 0
         self.cheapest_plan = ""
-        self.cheapest_plan = (1<<30)
+        self.cheapest_plan_cost = (1<<30)
 
     def run(self, tested_data):
         total_cost = 0
