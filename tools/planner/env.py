@@ -223,18 +223,37 @@ class ReactReflectEnv(ReactEnv):
             self.retry_step = 0
             self.is_terminated = False
 
-            """
-            Confirm that the total_cost of the plan fits within the budget.
-            """
+            # Confirm that the total_cost of the plan fits within the budget.
             budget = tested_data['budget']
-            if total_cost <= budget:
-                return f"The cost of your plan is {total_cost} dollars, which fits within the budget. " \
-                        "For your next action, call Finish[Final Plan] to output the plan."
+            num_days = unit['total_days']
+
+            """
+            For each day, try to aim for a "targeted" budget. This goes with the philosophy that
+            the first and last day will inherently be more expensive than the intermediate days,
+            as travel can take the bulk of expenses.
+            """
+            targeted_budget = int(budget * 1.25 / num_days)
+
+            if total_cost <= targeted_budget:
+
+                # Reset plans for the next day
+                self.cheapest_plan = ""
+                self.cheapest_plan_cost = (1<<30)
+
+                # Determine if we need to find subplans for successive days
+                if unit['total_days'] == unit['day']:
+                    return f"The cost of your plan is {total_cost} dollars, which fits within the budget. " \
+                            "For your next action, call Finish[Final Plan] to output the plan."
+                else:
+                    return f"The cost of your subplan so far is {total_cost} dollars, which tentatively fits within the budget. " \
+                            "Now, plan restaurants, accomodations, and transportation (if needed) for the next day, " \
+                            "using CostEnquiry[subplan] to ensure that subsequent days within the plan."
+        
             
             # Tell the LLM to remember the cheapest plan it made when its newer plan is more expensive.
             elif self.cheapest_plan_cost < total_cost:
-                return f"Sorry, the cost of your plan is {total_cost} dollars, which exceeds the budget of " \
-                       f"{budget} dollars, and was more expensive than a cheaper plan that you made previously, " \
+                return f"Sorry, the cost of your plan is {total_cost} dollars, which exceeds the targeted sub-budget of " \
+                       f"{targeted_budget} dollars, and was more expensive than a cheaper plan that you made previously, " \
                        f"which cost {self.cheapest_plan_cost} dollars. Forget your current plan and remember the " \
                         "cheapest plan that you made, as shown here: \n\n" \
                         \
@@ -253,8 +272,8 @@ class ReactReflectEnv(ReactEnv):
             else:
                 self.cheapest_plan = tested_data
                 self.cheapest_plan_cost = total_cost
-                return f"Sorry, the cost of your plan is {total_cost} dollars, which exceeds the budget of " \
-                       f"{budget} dollars. Find either cheaper accomodation or flights to reduce the total " \
+                return f"Sorry, the cost of your plan is {total_cost} dollars, which exceeds the targeted sub-budget of " \
+                       f"{targeted_budget} dollars. Find either cheaper accomodation or flights to reduce the total " \
                         "cost of the plan. If the cheapest accomodation and flight have been selected, and " \
                         "the cost of the plan still exceeds the budget, start finding cheaper restaurants. " \
                         "When creating your next plan, only change one attribute from your current plan. " \
