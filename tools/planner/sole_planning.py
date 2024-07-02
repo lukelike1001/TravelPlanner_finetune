@@ -106,6 +106,19 @@ if __name__ == "__main__":
             query_data = query_data_list[number-1]
             reference_information = query_data['reference_information']
 
+            # Data Loading Tests
+            # print(f"query_data['org']: {query_data['org']}")
+            # print(f"query_data['dest']: {query_data['dest']}")
+            # print(f"query_data['days']: {query_data['days']}")
+            # print(f"query_data['visiting_city_number']: {query_data['visiting_city_number']}")
+            # print(f"query_data['date']: {query_data['date']}")
+            # print(f"query_data['people_number']: {query_data['people_number']}")
+            # print(f"query_data['local_constraint']: {query_data['local_constraint']}")
+            # print(f"query_data['budget']: {query_data['budget']}")
+            # print(f"query_data['query']: {query_data['query']}")
+            # print(f"query_data['level']: {query_data['level']}")
+            # print(f"query_data['reference_information']: {query_data['reference_information']}")
+            
             """
             Access the planner_results and scratchpad after each run.
             Don't store planner results if they produced no valid plans.
@@ -136,4 +149,6 @@ if __name__ == "__main__":
             """
             with open(os.path.join(f'{args.output_dir}/{args.set_type}/generated_plan_{number}.json'), 'w') as f:
                 json.dump(result, f, indent=4)
+                print("JSON dumped.")
+
         print(cb)

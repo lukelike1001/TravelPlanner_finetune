@@ -227,6 +227,7 @@ class ReactReflectPlanner:
         if model_name in ['gemini']:
             self.react_llm = ChatGoogleGenerativeAI(temperature=0,model="gemini-pro",google_api_key=GOOGLE_API_KEY)
             self.reflect_llm = ChatGoogleGenerativeAI(temperature=0,model="gemini-pro",google_api_key=GOOGLE_API_KEY)
+            print("Gemini loaded.") 
         else:
             self.react_llm = ChatOpenAI(model_name=model_name, temperature=0, max_tokens=1024, openai_api_key=OPENAI_API_KEY,model_kwargs={"stop": ["Action","Thought","Observation,'\n"]})
             self.reflect_llm = ChatOpenAI(model_name=model_name, temperature=0, max_tokens=1024, openai_api_key=OPENAI_API_KEY,model_kwargs={"stop": ["Action","Thought","Observation,'\n"]})
@@ -250,9 +251,12 @@ class ReactReflectPlanner:
         self.query = query
         self.text = text
 
+        # Query and Text Loading Tests
+        # print(f"self.query: {self.query}")
+        # print(f"self.text: {self.text}")
+
         if reset:
             self.reset()
-        
 
         while not (self.is_halted() or self.is_finished()):
             self.step()
@@ -335,6 +339,16 @@ class ReactReflectPlanner:
         while True:
             try:
                 if self.model_name in ['gemini']:
+
+                    """
+                    NOTE: Invoking Gemini for the agent prompt returns an empty string.
+                    The code likely needs to be updated, so for now, validation tests should use GPT-3.5-turbo.
+
+                    An excerpt error can be seen below:
+                      The provided information does not include any details about attractions, restaurants, or
+                      accommodations in St. Petersburg. Therefore, I cannot create a complete travel plan that
+                      starts from St. Petersburg and ends in Appleton for only 1 day on March 19, 2022.
+                    """
                     return format_step(self.react_llm.invoke(self._build_agent_prompt()).content)
                 else:
                     return format_step(self.react_llm([HumanMessage(content=self._build_agent_prompt())]).content)
