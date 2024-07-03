@@ -281,7 +281,7 @@ class ReactReflectEnv(ReactEnv):
                         "anything else, such as the breakfast or the flight."
             
         else:
-            message = "Sorry, the cost of your plan is not available because of the following reasons:"
+            message = "Sorry, we can't calculate the cost of your plan of the following reasons: "
             for idx, info in enumerate(returned_info):
                 message += str(idx + 1) + ". " + info + " " + '\t'
             self.retry_step += 1

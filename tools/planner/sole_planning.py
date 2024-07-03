@@ -81,7 +81,7 @@ if __name__ == "__main__":
         This saves validation tests on gpt-3.5-turbo-1106, and provides quicker results.
         """
         # query_data_list  = load_dataset('osunlp/TravelPlanner','validation')['validation']
-        validation_filepath = '/home/luke_skywalker/github/TravelPlanner_finetune/cache/super_easy/2day_1person/budget_2000_2d_1p.csv'
+        validation_filepath = '/home/luke_skywalker/github/TravelPlanner_finetune/cache/super_easy/3day_1person/budget_1000_3d_1p_nc.csv'
         query_data_list = load_dataset('csv', data_files={'validation': validation_filepath})['validation']
 
     elif args.set_type == 'test':
