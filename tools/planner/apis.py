@@ -400,6 +400,196 @@ class ReactReflectPlanner:
         self.reflections_str = ''
         self.env.reset()
 
+
+class ExpelPlanner:
+    """
+    A question answering Self-Reflecting Expel Agent.
+    """
+    def __init__(self,
+                 agent_prompt: PromptTemplate = react_reflect_planner_agent_prompt,
+                reflect_prompt: PromptTemplate = reflect_prompt,
+                 model_name: str = 'gpt-3.5-turbo-1106',
+                 ) -> None:
+        
+        self.agent_prompt = agent_prompt
+        self.reflect_prompt = reflect_prompt
+        if model_name in ['gemini']:
+            self.react_llm = ChatGoogleGenerativeAI(temperature=0,model="gemini-pro",google_api_key=GOOGLE_API_KEY)
+            self.reflect_llm = ChatGoogleGenerativeAI(temperature=0,model="gemini-pro",google_api_key=GOOGLE_API_KEY)
+            print("Gemini loaded.") 
+        else:
+            self.react_llm = ChatOpenAI(model_name=model_name, temperature=0, max_tokens=1024, openai_api_key=OPENAI_API_KEY,model_kwargs={"stop": ["Action","Thought","Observation,'\n"]})
+            self.reflect_llm = ChatOpenAI(model_name=model_name, temperature=0, max_tokens=1024, openai_api_key=OPENAI_API_KEY,model_kwargs={"stop": ["Action","Thought","Observation,'\n"]})
+        self.model_name = model_name
+        self.env = ReactReflectEnv()
+        self.query = None
+        self.max_steps = 30
+        self.reset()
+        self.finished = False
+        self.answer = ''
+        self.reflections: List[str] = []
+        self.reflections_str: str = ''
+        self.enc = tiktoken.encoding_for_model("gpt-3.5-turbo")
+        
+        # Store the plan number and reflection number to keep track of reflection logs
+        self.plan_number = 1
+        self.reflect_number = 1
+
+    def run(self, text, query, reset = True) -> None:
+
+        self.query = query
+        self.text = text
+
+        # Query and Text Loading Tests
+        # print(f"self.query: {self.query}")
+        # print(f"self.text: {self.text}")
+
+        if reset:
+            self.reset()
+
+        while not (self.is_halted() or self.is_finished()):
+            self.step()
+            if self.env.is_terminated and not self.finished:
+                self.reflect(ReflexionStrategy.REFLEXION)
+        
+        # Update the plan number for every completed run
+        # Then reset the reflect number to 1 for the next run
+        self.plan_number += 1
+        self.reflect_number = 1
+        
+        return self.answer, self.scratchpad
+
+    
+    def step(self) -> None:
+        # Think
+        self.scratchpad += f'\nThought {self.curr_step}:'
+        self.scratchpad += ' ' + self.prompt_agent()
+        print(self.scratchpad.split('\n')[-1])
+
+        # Act
+        self.scratchpad += f'\nAction {self.curr_step}:'
+        action = self.prompt_agent()
+        self.scratchpad += ' ' + action
+        print(self.scratchpad.split('\n')[-1])
+
+        # Observe
+        self.scratchpad += f'\nObservation {self.curr_step}: '
+
+        action_type, action_arg = parse_action(action)
+
+        if action_type == 'CostEnquiry':
+            try:
+                # Convert the string-representation of a dictionary into a dict 
+                input_arg = eval(action_arg)
+                
+                # Terminate the code if the input argument wasn't a dict
+                if type(input_arg) != dict:
+                    raise ValueError('The sub plan can not be parsed into json format, please check. Only one day plan is supported.')
+                
+                # Evaluate the cost of the itinerary
+                observation = f'Cost: {self.env.run(input_arg)}'
+            except SyntaxError:
+                observation = f'The sub plan can not be parsed into json format, please check.'
+            except ValueError as e:
+                observation = str(e)
+        
+        elif action_type == 'Finish':
+            self.finished = True
+            observation = f'The plan is finished.'
+            self.answer = action_arg
+        
+        # Any action that isn't "CostEnquiry" or "Finish" is sent here.
+        else:
+            observation = f'Action {action_type} is not supported.'
+        
+        self.curr_step += 1
+
+        self.scratchpad += observation
+        print(self.scratchpad.split('\n')[-1])
+
+    def reflect(self, strategy: ReflexionStrategy) -> None:
+        print('Reflecting...')
+        if strategy == ReflexionStrategy.REFLEXION: 
+            self.reflections += [self.prompt_reflection()]
+            self.reflections_str = format_reflections(self.reflections)
+        else:
+            raise NotImplementedError(f'Unknown reflection strategy: {strategy}')
+        print(self.reflections_str)
+
+        # Store the reflection inside a TXT file for all test cases
+        reflect_file_path = f"reflect/generated_reflection_plan{self.plan_number}_step{self.curr_step}_reflection{self.reflect_number}.txt"
+        os.makedirs(os.path.dirname(reflect_file_path), exist_ok=True)
+        self.reflect_number += 1
+
+        with open(reflect_file_path, 'w') as file:
+            file.write(self.reflections_str)
+
+    def prompt_agent(self) -> str:
+        while True:
+            try:
+                if self.model_name in ['gemini']:
+
+                    """
+                    NOTE: Invoking Gemini for the agent prompt returns an empty string.
+                    The code likely needs to be updated, so for now, validation tests should use GPT-3.5-turbo.
+
+                    An excerpt error can be seen below:
+                      The provided information does not include any details about attractions, restaurants, or
+                      accommodations in St. Petersburg. Therefore, I cannot create a complete travel plan that
+                      starts from St. Petersburg and ends in Appleton for only 1 day on March 19, 2022.
+                    """
+                    return format_step(self.react_llm.invoke(self._build_agent_prompt()).content)
+                else:
+                    return format_step(self.react_llm([HumanMessage(content=self._build_agent_prompt())]).content)
+            except:
+                catch_openai_api_error()
+                print(self._build_agent_prompt())
+                print(len(self.enc.encode(self._build_agent_prompt())))
+                time.sleep(5)
+    
+    def prompt_reflection(self) -> str:
+        while True:
+            try:
+                if self.model_name in ['gemini']:
+                    return format_step(self.reflect_llm.invoke(self._build_reflection_prompt()).content)
+                else:
+                    return format_step(self.reflect_llm([HumanMessage(content=self._build_reflection_prompt())]).content)
+            except:
+                catch_openai_api_error()
+                print(self._build_reflection_prompt())
+                print(len(self.enc.encode(self._build_reflection_prompt())))
+                time.sleep(5)
+    
+    def _build_agent_prompt(self) -> str:
+        return self.agent_prompt.format(
+                            query = self.query,
+                            text = self.text,
+                            scratchpad = self.scratchpad,
+                            reflections = self.reflections_str)
+    
+    def _build_reflection_prompt(self) -> str:
+        return self.reflect_prompt.format(
+                            query = self.query,
+                            text = self.text,
+                            scratchpad = self.scratchpad)
+    
+    def is_finished(self) -> bool:
+        return self.finished
+
+    def is_halted(self) -> bool:
+        return ((self.curr_step > self.max_steps) or (
+                    len(self.enc.encode(self._build_agent_prompt())) > 14000)) and not self.finished
+
+    def reset(self) -> None:
+        self.scratchpad = ''
+        self.answer = ''
+        self.curr_step = 1
+        self.finished = False
+        self.reflections = []
+        self.reflections_str = ''
+        self.env.reset()
+
+
 def format_step(step: str) -> str:
     return step.strip('\n').strip().replace('\n', '')
 
