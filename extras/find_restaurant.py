@@ -70,10 +70,6 @@ prompt = f"""
     Extracted JSON:
     """
 
-extract_constraints_prompt = "Extract the following query and format them as a JSON query like \
-    the following format: {\"preferred_cost\": 42.5, \"preferred_cuisines\": {\"Chinese\", \"Mexican\"}, \
-    \"preferred_rating\": 2.0, \"city\": \"Appleton\"}."
-
 # Function to extract constraints using GPT-3.5
 def extract_constraints(query: str) -> dict:
     response = openai.ChatCompletion.create(
@@ -94,16 +90,22 @@ def extract_constraints(query: str) -> dict:
 constraints = extract_constraints(query)
 
 # Map extracted constraints to function parameters
-average_cost = constraints.get('preferred_cost', float("inf"))
-cuisine = constraints.get('preferred_cuisines', {"American", "Chinese", "Mexican", "Indian"})
-rating = constraints.get('preferred_rating', 0.0)
+preferred_cost = constraints.get('preferred_cost', float("inf"))
+preferred_cuisines = constraints.get('preferred_cuisines', {"American", "Chinese", "Mexican", "Indian"})
+preferred_rating = constraints.get('preferred_rating', 0.0)
 city = constraints.get('city', "")
+
+print(f"""Constraints:
+- Preferred Cost: {preferred_cost}
+- Preferred Cuisines: {preferred_cuisines}
+- Preferred Rating: {preferred_rating}
+- City: {city}""")
 
 # Run the function with the extracted parameters
 result = find_restaurant_with_constraints(
-    preferred_cost=average_cost,
-    preferred_cuisines=cuisine,
-    preferred_rating=rating,
+    preferred_cost=preferred_cost,
+    preferred_cuisines=preferred_cuisines,
+    preferred_rating=preferred_rating,
     city=city
 )
 
