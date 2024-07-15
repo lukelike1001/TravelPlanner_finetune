@@ -21,7 +21,7 @@ def find_restaurants_by_city(filepath: str ="database/restaurants/scrambled_name
 # Finds the cheapest restaurant in a city that meets all possible constraints.
 def find_restaurant_with_constraints(
         preferred_cost: float = float("inf"),
-        preferred_cuisines: set[str] = {"American", "Chinese", "Mexican", "Indian"},
+        preferred_cuisines: set[str] = {"Chinese", "American", "Italian", "Mexican", "Indian", "Mediterranean", "French"},
         preferred_rating: float = 0.0,
         city: str = ""
     ) -> str:
@@ -52,11 +52,12 @@ def find_restaurant_with_constraints(
     return selected_restaurants.iloc[0]
 
 # Example natural language query
-query = "Can you find me the cheapest restaurant in the city of Appleton, such that its aggregate rating is above 3.0 and the average cost of a meal is under 40 dollars. Make sure that the cuisine is either Mexican or Seafood."
+query = "Can you find me the cheapest restaurant in the city of Appleton, such that its aggregate rating is above 3.0 and the average cost of a meal is under 40 dollars. Verify that the cuisine is either Mexican or Seafood."
 prompt = f"""
     You are an assistant that converts natural language queries into constraints for a function. 
     Extract the constraints from the following query and format them as a JSON object with the keys 'preferred_cost', 'preferred_cuisine', 'preferred_rating', and 'city'.
-    
+    Cuisines can be identified by the following keywords to look out for:  "Chinese", "American", "Italian", "Mexican", "Indian", "Mediterranean", and "French"
+
     Query: "{query}"
 
     Example JSON output format:
@@ -91,11 +92,11 @@ constraints = extract_constraints(query)
 
 # Map extracted constraints to function parameters
 preferred_cost = constraints.get('preferred_cost', float("inf"))
-preferred_cuisines = constraints.get('preferred_cuisines', {"American", "Chinese", "Mexican", "Indian"})
+preferred_cuisines = constraints.get('preferred_cuisines', {"Chinese", "American", "Italian", "Mexican", "Indian", "Mediterranean", "French"})
 preferred_rating = constraints.get('preferred_rating', 0.0)
 city = constraints.get('city', "")
 
-print(f"""Constraints:
+print(f"""Extracted Constraints:
 - Preferred Cost: {preferred_cost}
 - Preferred Cuisines: {preferred_cuisines}
 - Preferred Rating: {preferred_rating}
