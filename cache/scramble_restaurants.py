@@ -20,10 +20,16 @@ df = pd.read_csv(input_csv)
 # Rename one of the unnamed dataframes
 df.rename(columns={'Unnamed: 0': ''}, inplace=True)
 
+# Keep a copy of the original name for reference
+df['Original Name'] = df['Name']
+
 # Replace the names in the "Name" column with the modified names including the row number
 df['Name'] = df.index.to_series().apply(lambda idx: changeName(idx))
 
+# Sort the restaurants in increasing cost
+sorted_df = df.sort_values(by='Average Cost')
+
 # Save the modified DataFrame to a new CSV file
-df.to_csv(output_csv, index=False)
+sorted_df.to_csv(output_csv, index=False)
 
 print(f"Modified CSV saved as {output_csv}")
