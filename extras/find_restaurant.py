@@ -1,0 +1,110 @@
+import os
+import openai
+import pandas as pd
+from typing import List
+
+# Load the OpenAI API key from environment variable
+openai_api_key = os.getenv('OPENAI_API_KEY')
+
+if not openai_api_key:
+    raise ValueError("The OPENAI_API_KEY environment variable is not set.")
+
+# Initialize the OpenAI API with the loaded API key
+openai.api_key = openai_api_key
+
+# Selects all restaurants in a city given an input CSV
+def find_restaurants_by_city(filepath: str ="database/restaurants/scrambled_names_restaurant_2022.csv", city: str ="") -> List[str]:
+    restaurants = pd.read_csv(filepath)
+    city_restaurants = restaurants[restaurants["City"] == city]
+    return city_restaurants
+
+# Finds the cheapest restaurant in a city that meets all possible constraints.
+def find_restaurant_with_constraints(
+        preferred_cost: float = float("inf"),
+        preferred_cuisines: set[str] = {"American", "Chinese", "Mexican", "Indian"},
+        preferred_rating: float = 0.0,
+        city: str = ""
+    ) -> str:
+
+    # If a valid city was not submitted, reprompt the LLM to identify the city again.
+    if city == "":
+        print("Please input a valid city to search for restaurants")
+        return "Please input a valid city to search for restaurants"
+
+    # Find all restaurants for this city given an input CSV
+    selected_restaurants =  find_restaurants_by_city(city=city)
+
+    # Raise an warning message if there are no restaurants in the provided city
+    if selected_restaurants.empty:
+        print("There are no restaurants in your selected city. Please revise your search.")
+        return ""
+    
+    # Iterate through the selected list of restaurants in the current city.
+    for index, row in selected_restaurants.iterrows():
+        current_cuisine_tags = set(row["Cuisines"].split(" "))
+        if row["Average Cost"] > preferred_cost:
+            break
+        if row["Aggregate Rating"] >= preferred_rating and current_cuisine_tags.intersection(preferred_cuisines):
+            return row["Original Name"]
+
+    # This is a stub function. Implement your logic to find the restaurant.
+    print(f"No restaurant matching the provided constraints was found. The cheapest restaurant will be returned as a placeholder.")
+    return selected_restaurants.iloc[0]
+
+# Example natural language query
+query = "Can you find me the cheapest restaurant in the city of Appleton, such that its aggregate rating is above 3.0 and the average cost of a meal is under 40 dollars. Make sure that the cuisine is either Mexican or Seafood."
+prompt = f"""
+    You are an assistant that converts natural language queries into constraints for a function. 
+    Extract the constraints from the following query and format them as a JSON object with the keys 'preferred_cost', 'preferred_cuisine', 'preferred_rating', and 'city'.
+    
+    Query: "{query}"
+
+    Example JSON output format:
+    {{
+        "preferred_cost": float,
+        "preferred_cuisines": {"string"},
+        "preferred_rating": float,
+        "city": "string"
+    }}
+
+    Extracted JSON:
+    """
+
+extract_constraints_prompt = "Extract the following query and format them as a JSON query like \
+    the following format: {\"preferred_cost\": 42.5, \"preferred_cuisines\": {\"Chinese\", \"Mexican\"}, \
+    \"preferred_rating\": 2.0, \"city\": \"Appleton\"}."
+
+# Function to extract constraints using GPT-3.5
+def extract_constraints(query: str) -> dict:
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo-1106",
+        messages=[
+            {"role": "system", "content": "Extract constraints from natural language queries."},
+            {"role": "user", "content": prompt}
+        ],
+        max_tokens=150,
+        temperature=0.0,
+        n=1,
+        stop=None
+    )
+    constraints = response.choices[0].message['content'].strip()
+    return eval(constraints)
+
+# Extracted constraints from the query
+constraints = extract_constraints(query)
+
+# Map extracted constraints to function parameters
+average_cost = constraints.get('preferred_cost', float("inf"))
+cuisine = constraints.get('preferred_cuisines', {"American", "Chinese", "Mexican", "Indian"})
+rating = constraints.get('preferred_rating', 0.0)
+city = constraints.get('city', "")
+
+# Run the function with the extracted parameters
+result = find_restaurant_with_constraints(
+    preferred_cost=average_cost,
+    preferred_cuisines=cuisine,
+    preferred_rating=rating,
+    city=city
+)
+
+print(f"The cheapest restaurant in {city} is {result}")
