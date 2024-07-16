@@ -53,26 +53,26 @@ def find_restaurant_with_constraints(
 
 # Example natural language query
 query = "Can you find me the cheapest restaurant in the city of Appleton, such that its aggregate rating is above 3.0 and the average cost of a meal is under 40 dollars. Verify that the cuisine is either Mexican or Seafood."
-prompt = f"""
-    You are an assistant that converts natural language queries into constraints for a function. 
-    Extract the constraints from the following query and format them as a JSON object with the keys 'preferred_cost', 'preferred_cuisine', 'preferred_rating', and 'city'.
-    Cuisines can be identified by the following keywords to look out for:  "Chinese", "American", "Italian", "Mexican", "Indian", "Mediterranean", and "French"
+prompt = f"""\
+You are an assistant that converts natural language queries into constraints for a function. 
+Extract the constraints from the following query and format them as a JSON object with the keys 'preferred_cost', 'preferred_cuisine', 'preferred_rating', and 'city'.
+Cuisines can be identified by the following keywords to look out for:  "Chinese", "American", "Italian", "Mexican", "Indian", "Mediterranean", and "French"
 
-    Query: "{query}"
+Query: "{query}"
 
-    Example JSON output format:
-    {{
-        "preferred_cost": float,
-        "preferred_cuisines": {"string"},
-        "preferred_rating": float,
-        "city": "string"
-    }}
+Example JSON output format:
+{{
+    "preferred_cost": float,
+    "preferred_cuisines": {"string"},
+    "preferred_rating": float,
+    "city": "string"
+}}
 
-    Extracted JSON:
-    """
+Extracted JSON:
+"""
 
 # Function to extract constraints using GPT-3.5
-def extract_constraints(query: str) -> dict:
+def extract_constraints() -> dict:
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo-1106",
         messages=[
