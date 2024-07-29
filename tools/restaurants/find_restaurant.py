@@ -3,15 +3,6 @@ import openai
 import pandas as pd
 from typing import List
 
-# Load the OpenAI API key from environment variable
-openai_api_key = os.getenv('OPENAI_API_KEY')
-
-if not openai_api_key:
-    raise ValueError("The OPENAI_API_KEY environment variable is not set.")
-
-# Initialize the OpenAI API with the loaded API key
-openai.api_key = openai_api_key
-
 # Selects all restaurants in a city given an input CSV
 def find_restaurants_by_city(filepath: str ="database/restaurants/scrambled_names_restaurant_2022.csv", city: str ="") -> List[str]:
     restaurants = pd.read_csv(filepath)
@@ -51,26 +42,6 @@ def find_restaurant_with_constraints(
     print(f"No restaurant matching the provided constraints was found. The cheapest restaurant will be returned as a placeholder.")
     return selected_restaurants.iloc[0]
 
-# Example natural language query
-query = "Can you find me the cheapest restaurant in the city of Appleton, such that its aggregate rating is above 3.0 and the average cost of a meal is under 40 dollars. Verify that the cuisine is either Mexican or Seafood."
-prompt = f"""\
-You are an assistant that converts natural language queries into constraints for a function. 
-Extract the constraints from the following query and format them as a JSON object with the keys 'preferred_cost', 'preferred_cuisine', 'preferred_rating', and 'city'.
-Cuisines can be identified by the following keywords to look out for:  "Chinese", "American", "Italian", "Mexican", "Indian", "Mediterranean", and "French"
-
-Query: "{query}"
-
-Example JSON output format:
-{{
-    "preferred_cost": float,
-    "preferred_cuisines": {"string"},
-    "preferred_rating": float,
-    "city": "string"
-}}
-
-Extracted JSON:
-"""
-
 # Function to extract constraints using GPT-3.5
 def extract_constraints() -> dict:
     response = openai.ChatCompletion.create(
@@ -87,27 +58,66 @@ def extract_constraints() -> dict:
     constraints = response.choices[0].message['content'].strip()
     return eval(constraints)
 
-# Extracted constraints from the query
-constraints = extract_constraints(query)
 
-# Map extracted constraints to function parameters
-preferred_cost = constraints.get('preferred_cost', float("inf"))
-preferred_cuisines = constraints.get('preferred_cuisines', {"Chinese", "American", "Italian", "Mexican", "Indian", "Mediterranean", "French"})
-preferred_rating = constraints.get('preferred_rating', 0.0)
-city = constraints.get('city', "")
 
-print(f"""Extracted Constraints:
-- Preferred Cost: {preferred_cost}
-- Preferred Cuisines: {preferred_cuisines}
-- Preferred Rating: {preferred_rating}
-- City: {city}""")
 
-# Run the function with the extracted parameters
-result = find_restaurant_with_constraints(
-    preferred_cost=preferred_cost,
-    preferred_cuisines=preferred_cuisines,
-    preferred_rating=preferred_rating,
-    city=city
-)
 
-print(f"The cheapest restaurant in {city} is {result}")
+
+
+
+if __name__ == "__main__":
+
+    # Load the OpenAI API key from environment variable
+    openai_api_key = os.getenv('OPENAI_API_KEY')
+
+    if not openai_api_key:
+        raise ValueError("The OPENAI_API_KEY environment variable is not set.")
+
+    # Initialize the OpenAI API with the loaded API key
+    openai.api_key = openai_api_key
+
+    # Example natural language query
+    query = "Can you find me the cheapest restaurant in the city of Appleton, such that its aggregate rating is above 3.0 and the average cost of a meal is under 40 dollars. Verify that the cuisine is either Mexican or Seafood."
+    prompt = f"""\
+    You are an assistant that converts natural language queries into constraints for a function. 
+    Extract the constraints from the following query and format them as a JSON object with the keys 'preferred_cost', 'preferred_cuisine', 'preferred_rating', and 'city'.
+    Cuisines can be identified by the following keywords to look out for:  "Chinese", "American", "Italian", "Mexican", "Indian", "Mediterranean", and "French"
+
+    Query: "{query}"
+
+    Example JSON output format:
+    {{
+        "preferred_cost": float,
+        "preferred_cuisines": {"string"},
+        "preferred_rating": float,
+        "city": "string"
+    }}
+
+    Extracted JSON:
+    """
+
+    # Extracted constraints from the query
+    constraints = extract_constraints(query)
+
+    # Map extracted constraints to function parameters
+    preferred_cost = constraints.get('preferred_cost', float("inf"))
+    preferred_cuisines = constraints.get('preferred_cuisines', {"Chinese", "American", "Italian", "Mexican", "Indian", "Mediterranean", "French"})
+    preferred_rating = constraints.get('preferred_rating', 0.0)
+    city = constraints.get('city', "")
+
+    # Verify that the constraints have been properly extracted
+    print(f"""Extracted Constraints:
+    - Preferred Cost: {preferred_cost}
+    - Preferred Cuisines: {preferred_cuisines}
+    - Preferred Rating: {preferred_rating}
+    - City: {city}""")
+
+    # Run the function with the extracted parameters
+    result = find_restaurant_with_constraints(
+        preferred_cost=preferred_cost,
+        preferred_cuisines=preferred_cuisines,
+        preferred_rating=preferred_rating,
+        city=city
+    )
+
+    print(f"The cheapest restaurant in {city} is {result}")
