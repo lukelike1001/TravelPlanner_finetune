@@ -138,6 +138,12 @@ class ReactReflectEnv(ReactEnv):
         self.cheapest_plan = ""
         self.cheapest_plan_cost = (1<<30)
 
+    """
+    CostEnquiry function implementation
+
+    Called from apis.py from the following line:
+    observation = f'Cost: {self.env.run(input_arg)}'
+    """
     def run(self, tested_data):
         total_cost = 0
         unit = tested_data
