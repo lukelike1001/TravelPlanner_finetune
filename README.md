@@ -1,4 +1,4 @@
-<h1 align="center">TravelPlanner<br> A Benchmark for Real-World Planning<br> with Language Agents </h1>
+<h1 align="center">TravelPlanner_finetune<br> Prompt Engineering and Classical Planning Techniques for Improving TravelPlanner Itinerary Generation </h1>
 
 ![Travel Planner](https://img.shields.io/badge/Task-Planning-blue)
 ![Travel Planner](https://img.shields.io/badge/Task-Tool_Use-blue) 
@@ -10,7 +10,7 @@
     <img src="images/icon.png" width="10%"> <br>
 </p>
 
-Code for the Paper "[TravelPlanner: A Benchmark for Real-World Planning with Language Agents](http://arxiv.org/abs/2402.01622)".
+A Branch based on the paper: "[TravelPlanner: A Benchmark for Real-World Planning with Language Agents](http://arxiv.org/abs/2402.01622)".
 
 ![Demo Video GIF](images/TravelPlanner.gif)
 
@@ -23,19 +23,18 @@ Code for the Paper "[TravelPlanner: A Benchmark for Real-World Planning with Lan
 [<a href="https://twitter.com/ysu_nlp/status/1754365367294562680">Twitter</a>]
 </p>
 
-## Updates
+# TravelPlanner_finetune
 
-- 2024/4/28: Update the [warnings](https://github.com/OSU-NLP-Group/TravelPlanner/tree/main?tab=readme-ov-file#%EF%B8%8Fwarnings), please note that we strictly prohibit any form of cheating.
-- 2024/4/21: Provide [format check tool](./postprocess/format_check.py)  for testset submission files.  You can run it to check if there are any format errors in your file.
+TravelPlanner_finetune is a branch of TravelPlanner that strives to improve the base TravelPlanner benchmark using both prompt engineering and classical planning techniques. More specifically, I try to use better formatted prompts to better guide the LLM to reach a valid itinerary, in conjunction with Python helper functions that help the LLM perform basic arithmetic and record keeping.
 
-# TravelPlanner
+This repository has only tested prompt engineer and Pythonic function on sole-planning mode, and subfolders featuring changes from the original benchmark contain README files documenting these changes, which you can find here:
 
-TravelPlanner is a benchmark crafted for evaluating language agents in tool-use and complex planning within multiple constraints.
-
-For a given query, language agents are expected to formulate a comprehensive plan that includes transportation, daily meals, attractions, and accommodation for each day.
-
-For constraints, from the perspective of real world applications, TravelPlanner includes three types of them: Environment Constraint, Commonsense Constraint, and Hard Constraint. 
-
+## Subfolder README Files
+- [`agents/`](agents/README.md): Prompts and algorithms for LLM agents
+- [`evaluation/`](evaluation/README.md): Caches output logs and reflections for both raw and modified TravelPlanner runs
+- [`selected_database`](selected_database/README.md): Smaller samples of the original TravelPlanner datasets
+- [`tools/`](tools/README.md): Tools for searching the travel information CSVs (e.g., accomodations, flights)
+- [`tools/planner`](tools/planner/README.md): Tools for running sole-planning mode
 
 ## Setup Environment
 
@@ -51,22 +50,7 @@ pip install -r requirements.txt
 ## Running
 ### Two-stage Mode
 
-In the two-stage mode, language agents are tasked to with employing various search tools to gather information.
-Based on the collected information, language agents are expected to deliver a plan that not only meet the user’s needs specified in the query but also adheres to commonsense constraints.
-
-```bash
-export OUTPUT_DIR=path/to/your/output/file
-# We support MODEL in ['gpt-3.5-turbo-X','gpt-4-1106-preview','gemini','mistral-7B-32K','mixtral']
-export MODEL_NAME=MODEL_NAME
-export OPENAI_API_KEY=YOUR_OPENAI_KEY
-# if you do not want to test google models, like gemini, just input "1".
-export GOOGLE_API_KEY=YOUR_GOOGLE_KEY
-# SET_TYPE in ['validation', 'test']
-export SET_TYPE=validation
-cd agents
-python tool_agents.py  --set_type $SET_TYPE --output_dir $OUTPUT_DIR --model_name $MODEL_NAME
-```
-The generated plan will be stored in OUTPUT_DIR/SET_TYPE.
+Two-stage mode is unchanged from the original TravelPlanner paper, as this branch focuses on the sole-planning mode.
 
 ### Sole-Planning Mode
 
@@ -130,7 +114,7 @@ python eval.py --set_type $SET_TYPE --evaluation_file_path $EVALUATION_FILE_PATH
 
 ## ⚠️Warnings
 
-We release our evaluation scripts to foster innovation and aid the development of new methods.  We encourage the use of evaluation feedback in training set, such as implementing reinforcement learning techniques, to enhance learning. However, we strictly prohibit any form of cheating in the validation and test sets to uphold the fairness and reliability of the benchmark's evaluation process. We reserve the right to disqualify results if we find any of the following violations:
+The evaluation scripts to foster innovation and aid the development of new methods.  We encourage the use of evaluation feedback in training set, such as implementing reinforcement learning techniques, to enhance learning. However, we strictly prohibit any form of cheating in the validation and test sets to uphold the fairness and reliability of the benchmark's evaluation process. We reserve the right to disqualify results if we find any of the following violations:
 
 1. Reverse engineering of our dataset, which includes, but is not limited to:
    - Converting our natural language queries in the test set to structured formats (e.g., JSON) for optimization and unauthorized evaluation.
@@ -149,32 +133,19 @@ from datasets import load_dataset
 data = load_dataset('osunlp/TravelPlanner','test')['test']
 ```
 
-## TODO
-
-- ##### Code
-
-  - [x] Baseline Code
-
-  - [x] Query Construction Code
-
-  - [x] Evaluation Code
-  - [x] Plan Parsing and Element Extraction Code
-
-- ##### Environment
-
-  - [x] Release Environment Database
-  - [ ] Database Field Introduction
-
 ## Contact
 
-If you have any problems, please contact 
+If you have any problems with this branch of TravelPlanner, please contact
+[Luke Nam](mailto:lukelike1001@gmail.com)
+
+If you have any problems with the original TravelPlanner paper, please contact 
 [Jian Xie](mailto:jianx0321@gmail.com),
 [Kai Zhang](mailto:zhang.13253@osu.edu),
 [Yu Su](mailto:su.809@osu.edu)
 
 ## Citation Information
 
-If our paper or related resources prove valuable to your research, we kindly ask for citation. 
+Please cite the original TravelPlanner authors when using their code, paper, or related resources for their research.
 
 <a href="https://github.com/OSU-NLP-Group/TravelPlanner"><img src="https://img.shields.io/github/stars/OSU-NLP-Group/TravelPlanner?style=social&label=TravelPanner" alt="GitHub Stars"></a>
 
